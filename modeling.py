@@ -814,8 +814,8 @@ def transformer_model(input_tensor,
   # The Transformer performs sum residuals on all layers so the input needs
   # to be the same as the hidden size.
   if input_width != num_attention_heads[0] * attention_head_size:
-    raise ValueError("The width of the input tensor (%d) != hidden size (%d)" %
-                     (input_width, hidden_size))
+    raise ValueError("The width of the input tensor (%d) != hidden size (%d)(%d)" %
+                     (input_width, num_attention_heads[0], attention_head_size))
 
   # We keep the representation as a 2D tensor to avoid re-shaping it back and
   # forth from a 3D tensor to a 2D tensor. Re-shapes are normally free on
@@ -827,6 +827,7 @@ def transformer_model(input_tensor,
   for layer_idx in range(num_hidden_layers):
     with tf.variable_scope("layer_%d" % layer_idx):
       hidden_size = attention_head_size * num_attention_heads[layer_idx]
+      next_hidden_size = attention_head_size * num_attention_heads[layer_idx] if layer_idx != num_hidden_layers-1 else hidden_size
       layer_input = prev_output
 
       with tf.variable_scope("attention"):
@@ -863,9 +864,20 @@ def transformer_model(input_tensor,
               kernel_initializer=create_initializer(initializer_range))
           attention_output = dropout(attention_output, hidden_dropout_prob)
           attention_output = layer_norm(attention_output + layer_input)
+      
+
+      # conv1d on attention_output to change its channel
+      if attention_output.shape.ndims == 2:
+        attention_output_3d = tf.reshape(attention_output, [batch_size, seq_length, -1])
+      elif attention_output.shape.ndims == 3:
+        attention_output_3d = attention_output
+      else:
+        raise ValueError("attention_output's shape ={} is not in [2,3]".format(attention_output.shape.ndims))
+      attention_output_channel_reduce_3d = tf.conv1d(attention_output_3d, filters=next_hidden_size, kernel_size=1,use_bias=False)
+      attention_output_channel_reduce = tf.reshape(attention_output_channel_reduce_3d, [batch_size*seq_length, -1])
 
       # The activation is only applied to the "intermediate" hidden layer.
-      intermediate_size = hidden_size * 4
+      intermediate_size = next_hidden_size * 4
       with tf.variable_scope("intermediate"):
         intermediate_output = tf.layers.dense(
             attention_output,
@@ -877,21 +889,21 @@ def transformer_model(input_tensor,
       with tf.variable_scope("output"):
         layer_output = tf.layers.dense(
             intermediate_output,
-            hidden_size,
+            next_hidden_size,
             kernel_initializer=create_initializer(initializer_range))
         layer_output = dropout(layer_output, hidden_dropout_prob)
-        layer_output = layer_norm(layer_output + attention_output)
+        layer_output = layer_norm(layer_output + attention_output_channel_reduce)
         prev_output = layer_output
         all_layer_outputs.append(layer_output)
 
   if do_return_all_layers:
     final_outputs = []
     for layer_output in all_layer_outputs:
-      final_output = reshape_from_matrix(layer_output, input_shape)
+      final_output = reshape_from_matrix(layer_output, [batch_size, seq_length, -1])
       final_outputs.append(final_output)
     return final_outputs
   else:
-    final_output = reshape_from_matrix(prev_output, input_shape)
+    final_output = reshape_from_matrix(prev_output, [batch_size, seq_length, -1])
     return final_output
 
 
