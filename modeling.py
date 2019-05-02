@@ -753,9 +753,8 @@ def attention_layer(from_tensor,
 
 def transformer_model(input_tensor,
                       attention_mask=None,
-                      hidden_size=768,
-                      num_hidden_layers=12,
-                      num_attention_heads=12,
+                      attention_head_size=64,
+                      num_attention_heads=[12,10,8,6,4,2,1],
                       intermediate_size=3072,
                       intermediate_act_fn=gelu,
                       hidden_dropout_prob=0.1,
@@ -798,13 +797,15 @@ def transformer_model(input_tensor,
 
   Raises:
     ValueError: A Tensor shape or parameter is invalid.
+  意图使每一层的num_attention_heads不同，保持attention_head_size不变，减少计算量
   """
-  if hidden_size % num_attention_heads != 0:
-    raise ValueError(
-        "The hidden size (%d) is not a multiple of the number of attention "
-        "heads (%d)" % (hidden_size, num_attention_heads))
+  #if hidden_size % num_attention_heads != 0:
+  #  raise ValueError(
+  #      "The hidden size (%d) is not a multiple of the number of attention "
+  #      "heads (%d)" % (hidden_size, num_attention_heads))
 
-  attention_head_size = int(hidden_size / num_attention_heads)
+  #attention_head_size = int(hidden_size / num_attention_heads)
+  num_hidden_layers = len(num_attention_heads)
   input_shape = get_shape_list(input_tensor, expected_rank=3)
   batch_size = input_shape[0]
   seq_length = input_shape[1]
@@ -812,7 +813,7 @@ def transformer_model(input_tensor,
 
   # The Transformer performs sum residuals on all layers so the input needs
   # to be the same as the hidden size.
-  if input_width != hidden_size:
+  if input_width != num_attention_heads[0] * attention_head_size:
     raise ValueError("The width of the input tensor (%d) != hidden size (%d)" %
                      (input_width, hidden_size))
 
@@ -825,6 +826,7 @@ def transformer_model(input_tensor,
   all_layer_outputs = []
   for layer_idx in range(num_hidden_layers):
     with tf.variable_scope("layer_%d" % layer_idx):
+      hidden_size = attention_head_size * num_attention_heads[layer_idx]
       layer_input = prev_output
 
       with tf.variable_scope("attention"):
@@ -834,7 +836,7 @@ def transformer_model(input_tensor,
               from_tensor=layer_input,
               to_tensor=layer_input,
               attention_mask=attention_mask,
-              num_attention_heads=num_attention_heads,
+              num_attention_heads=num_attention_heads[layer_idx],
               size_per_head=attention_head_size,
               attention_probs_dropout_prob=attention_probs_dropout_prob,
               initializer_range=initializer_range,
@@ -863,6 +865,7 @@ def transformer_model(input_tensor,
           attention_output = layer_norm(attention_output + layer_input)
 
       # The activation is only applied to the "intermediate" hidden layer.
+      intermediate_size = hidden_size * 4
       with tf.variable_scope("intermediate"):
         intermediate_output = tf.layers.dense(
             attention_output,
