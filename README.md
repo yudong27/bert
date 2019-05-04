@@ -6,8 +6,9 @@
 |model name|num_attention_heads|attention_head_size|examples/sec|
 |------|------|------|------|
 |原始bert|12heads,12layers|64|98|
-|model1|[12,10,8,6,4,2,1]64|316|
-|model2|[12,6,2,1]|64|601|
+|model1|[12,10,8,6,4,2,1]|64|316|
+|model2|[12,10,8,6,4,2,1]|32|518|
+|model3|[12,6,2,1]|64|601|
 
 # BERT
 
