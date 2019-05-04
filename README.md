@@ -1,6 +1,8 @@
 # 此版本的功能
 
 修改了attention函数，实现不同layer，不同attention head个数，至于residual问题，采用1x1卷积形式解决
+使用一个Tesla V100，num_attention_heads设置为[12,10,8,6,4,2,1], examples/sec: 200.794
+设置为[12,6,2,1], examples/sec: 396.019
 
 # BERT
 

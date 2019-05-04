@@ -26,14 +26,14 @@ import re
 import numpy as np
 import six
 import tensorflow as tf
-
+from pprint import pprint
 
 class BertConfig(object):
   """Configuration for `BertModel`."""
 
   def __init__(self,
                vocab_size,
-               num_hidden_layers=[12,10,8,4,2,1],
+               num_attention_heads=[12,10,8,4,2,1],
                attention_head_size=64,
                intermediate_size=3072,
                hidden_act="gelu",
@@ -68,7 +68,7 @@ class BertConfig(object):
     """
     self.vocab_size = vocab_size
     self.num_hidden_layers = len(num_attention_heads)
-    self.attention_head_size = attention_head_size,
+    self.attention_head_size = attention_head_size
     self.num_attention_heads = num_attention_heads
     self.hidden_act = hidden_act
     self.intermediate_size = intermediate_size
@@ -158,6 +158,7 @@ class BertModel(object):
     if not is_training:
       config.hidden_dropout_prob = 0.0
       config.attention_probs_dropout_prob = 0.0
+    print(config.to_json_string())
 
     input_shape = get_shape_list(input_ids, expected_rank=2)
     batch_size = input_shape[0]
@@ -827,7 +828,7 @@ def transformer_model(input_tensor,
   for layer_idx in range(num_hidden_layers):
     with tf.variable_scope("layer_%d" % layer_idx):
       hidden_size = attention_head_size * num_attention_heads[layer_idx]
-      next_hidden_size = attention_head_size * num_attention_heads[layer_idx] if layer_idx != num_hidden_layers-1 else hidden_size
+      next_hidden_size = attention_head_size * num_attention_heads[layer_idx+1] if layer_idx != num_hidden_layers-1 else hidden_size
       layer_input = prev_output
 
       with tf.variable_scope("attention"):
@@ -873,7 +874,7 @@ def transformer_model(input_tensor,
         attention_output_3d = attention_output
       else:
         raise ValueError("attention_output's shape ={} is not in [2,3]".format(attention_output.shape.ndims))
-      attention_output_channel_reduce_3d = tf.conv1d(attention_output_3d, filters=next_hidden_size, kernel_size=1,use_bias=False)
+      attention_output_channel_reduce_3d = tf.layers.conv1d(attention_output_3d, filters=next_hidden_size, kernel_size=1,use_bias=False)
       attention_output_channel_reduce = tf.reshape(attention_output_channel_reduce_3d, [batch_size*seq_length, -1])
 
       # The activation is only applied to the "intermediate" hidden layer.
