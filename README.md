@@ -1,3 +1,7 @@
+# 此版本的功能
+
+修改了attention函数，实现不同layer，不同attention head个数，至于residual问题，采用1x1卷积形式解决
+
 # BERT
 
 **\*\*\*\*\* New February 7th, 2019: TfHub Module \*\*\*\*\***
