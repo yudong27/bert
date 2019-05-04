@@ -3,12 +3,14 @@
 修改了attention函数，实现不同layer，不同attention head个数，至于residual问题，采用1x1卷积形式解决
 使用一个Tesla V100
 
-|model name|num_attention_heads|attention_head_size|examples/sec|
+|model name|num_attention_heads|attention_head_size|batch_size|examples/sec|
 |------|------|------|------|
-|原始bert|12heads,12layers|64|98|
-|model1|[12,10,8,6,4,2,1]|64|316|
-|model2|[12,10,8,6,4,2,1]|32|518|
-|model3|[12,6,2,1]|64|601|
+|原始bert|12heads,12layers|64|32|98|
+|model1|[12,10,8,6,4,2,1]|64|32|316|
+|model2|[12,10,8,6,4,2,1]|32|32|518|
+|model3|[12,10,8,6,4,2,1]|32|64|665|
+|model4|[12,10,8,6,4,2,1]|32|96|786|
+|model5|[12,6,2,1]|64|32|601|
 
 # BERT
 
